@@ -1,3 +1,33 @@
+"""
+https://www.statmt.org/wmt14/translation-task.html
+https://www.statmt.org/wmt13/training-parallel-europarl-v7.tgz
+
+.venv/bin/python scripts/buildvocab.py \
+--corpus ~/Downloads/europarl-v7/europarl-v7.fr-en.en \
+--output en.voc3.pkl \
+--limit 30000 \
+--groundhog
+
+.venv/bin/python scripts/buildvocab.py \
+--corpus ~/Downloads/europarl-v7/europarl-v7.fr-en.fr \
+--output fr.voc3.pkl \
+--limit 30000 \
+--groundhog
+
+.venv/bin/python train.py \
+--src_vocab fr.voc3.pkl \
+--trg_vocab en.voc3.pkl \
+--train_src ~/Downloads/europarl-v7/europarl-v7.fr-en.fr \
+--train_trg ~/Downloads/europarl-v7/europarl-v7.fr-en.en \
+--valid_src ~/Downloads/europarl-v7/europarl-v7.fr-en.fr \
+--valid_trg ~/Downloads/europarl-v7/europarl-v7.fr-en.en \
+--eval_script scripts/validate.sh \
+--model RNNSearch \
+--optim RMSprop \
+--batch_size 80 \
+--half_epoch \
+--info RMSprop-half_epoch
+"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,7 +38,7 @@ from beam import Beam
 class Encoder(nn.Module):
     """"encode the input sequence with Bi-GRU"""
     def __init__(self, ninp, nhid, ntok, padding_idx, emb_dropout, hid_dropout):
-        super(Encoder, self).__init__()
+        super().__init__()
         self.nhid = nhid
         self.emb = nn.Embedding(ntok, ninp, padding_idx=padding_idx)
         self.bi_gru = nn.GRU(ninp, nhid, 1, batch_first=True, bidirectional=True)
@@ -37,7 +67,7 @@ class Encoder(nn.Module):
 class Attention(nn.Module):
     """Attention Mechanism"""
     def __init__(self, nhid, ncontext, natt):
-        super(Attention, self).__init__()
+        super().__init__()
         self.h2s = nn.Linear(nhid, natt)
         self.s2s = nn.Linear(ncontext, natt)
         self.a2o = nn.Linear(natt, 1)
@@ -49,7 +79,7 @@ class Attention(nn.Module):
         attn_h += self.h2s(hidden).unsqueeze(1).expand_as(attn_h)
         logit = self.a2o(F.tanh(attn_h)).view(shape[0], shape[1])
         if mask.any():
-            logit.data.masked_fill_(1 - mask, -float('inf'))
+            logit.data.masked_fill_((1 - mask).type(torch.bool), -float('inf'))
         softmax = F.softmax(logit, dim=1)
         output = torch.bmm(softmax.unsqueeze(1), context).squeeze(1)
         return output
@@ -57,7 +87,7 @@ class Attention(nn.Module):
 
 class VallinaDecoder(nn.Module):
     def __init__(self, ninp, nhid, enc_ncontext, natt, nreadout, readout_dropout):
-        super(VallinaDecoder, self).__init__()
+        super().__init__()
         self.gru1 = nn.GRUCell(ninp, nhid)
         self.gru2 = nn.GRUCell(enc_ncontext, nhid)
         self.enc_attn = Attention(nhid, enc_ncontext, natt)
@@ -77,7 +107,7 @@ class VallinaDecoder(nn.Module):
 
 class RNNSearch(nn.Module):
     def __init__(self, opt):
-        super(RNNSearch, self).__init__()
+        super().__init__()
         self.dec_nhid = opt.dec_nhid
         self.dec_sos = opt.dec_sos
         self.dec_eos = opt.dec_eos
@@ -104,7 +134,7 @@ class RNNSearch(nn.Module):
         hidden = F.tanh(self.init_affine(avg_enc_context))
 
         loss = 0
-        for i in xrange(f_trg.size(1) - 1):
+        for i in range(f_trg.size(1) - 1):
             output, hidden = self.decoder(self.dec_emb_dp(self.emb(f_trg[:, i])), hidden, attn_mask, enc_context)
             loss += F.cross_entropy(self.affine(output), f_trg[:, i+1], reduce=False) * f_trg_mask[:, i+1]
         w_loss = loss.sum() / f_trg_mask[:, 1:].sum()
@@ -134,7 +164,7 @@ class RNNSearch(nn.Module):
         valid_size = beam_size
 
         hyp_list = []
-        for k in xrange(max_len):
+        for k in range(max_len):
             candidates = prev_beam.candidates
             input = src.new_tensor(map(lambda cand: cand[-1], candidates))
             input = self.dec_emb_dp(self.emb(input))
@@ -153,7 +183,7 @@ class RNNSearch(nn.Module):
 
             if valid_size == 0:
                 break
-            
+
             beam_remain_ix = src.new_tensor(remain_list)
             enc_context = enc_context.index_select(0, beam_remain_ix)
             attn_mask = attn_mask.index_select(0, beam_remain_ix)

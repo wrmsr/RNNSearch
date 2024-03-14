@@ -1,8 +1,7 @@
-import itertools
-
-
-class Beam(object):
+class Beam:
     def __init__(self, beam_size):
+        super().__init__()
+
         self.beam_size = beam_size
 
         self.candidates = []
@@ -17,7 +16,7 @@ class Beam(object):
 
         done_list, remain_list = [], []
         prev_candidates = prev_beam.candidates
-        for b_score, b_ix, t_ix in itertools.izip(nbest_score.tolist(), beam_ix.tolist(), token_ix.tolist()):
+        for b_score, b_ix, t_ix in zip(nbest_score.tolist(), beam_ix.tolist(), token_ix.tolist()):
             candidate = prev_candidates[b_ix] + [t_ix]
 
             if f_done(candidate):
