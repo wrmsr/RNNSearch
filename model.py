@@ -1,33 +1,3 @@
-"""
-https://www.statmt.org/wmt14/translation-task.html
-https://www.statmt.org/wmt13/training-parallel-europarl-v7.tgz
-
-.venv/bin/python scripts/buildvocab.py \
---corpus ~/Downloads/europarl-v7/europarl-v7.fr-en.en \
---output en.voc3.pkl \
---limit 30000 \
---groundhog
-
-.venv/bin/python scripts/buildvocab.py \
---corpus ~/Downloads/europarl-v7/europarl-v7.fr-en.fr \
---output fr.voc3.pkl \
---limit 30000 \
---groundhog
-
-.venv/bin/python train.py \
---src_vocab fr.voc3.pkl \
---trg_vocab en.voc3.pkl \
---train_src ~/Downloads/europarl-v7/europarl-v7.fr-en.fr \
---train_trg ~/Downloads/europarl-v7/europarl-v7.fr-en.en \
---valid_src ~/Downloads/europarl-v7/europarl-v7.fr-en.fr \
---valid_trg ~/Downloads/europarl-v7/europarl-v7.fr-en.en \
---eval_script scripts/validate.sh \
---model RNNSearch \
---optim RMSprop \
---batch_size 80 \
---half_epoch \
---info RMSprop-half_epoch
-"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -166,7 +136,7 @@ class RNNSearch(nn.Module):
         hyp_list = []
         for k in range(max_len):
             candidates = prev_beam.candidates
-            input = src.new_tensor(map(lambda cand: cand[-1], candidates))
+            input = src.new_tensor(list(map(lambda cand: cand[-1], candidates)))
             input = self.dec_emb_dp(self.emb(input))
             output, hidden = self.decoder(input, hidden, attn_mask, enc_context)
             log_prob = F.log_softmax(self.affine(output), dim=1)

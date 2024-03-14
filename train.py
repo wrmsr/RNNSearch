@@ -1,11 +1,40 @@
+"""
+https://www.statmt.org/wmt14/translation-task.html
+https://www.statmt.org/wmt13/training-parallel-europarl-v7.tgz
+
+.venv/bin/python scripts/buildvocab.py \
+--corpus ~/Downloads/europarl-v7/europarl-v7.fr-en.en \
+--output en.voc3.pkl \
+--limit 30000 \
+--groundhog
+
+.venv/bin/python scripts/buildvocab.py \
+--corpus ~/Downloads/europarl-v7/europarl-v7.fr-en.fr \
+--output fr.voc3.pkl \
+--limit 30000 \
+--groundhog
+
+.venv/bin/python train.py \
+--src_vocab fr.voc3.pkl \
+--trg_vocab en.voc3.pkl \
+--train_src ~/Downloads/europarl-v7/europarl-v7.fr-en.fr \
+--train_trg ~/Downloads/europarl-v7/europarl-v7.fr-en.en \
+--valid_src ~/Downloads/europarl-v7/europarl-v7.fr-en.fr \
+--valid_trg ~/Downloads/europarl-v7/europarl-v7.fr-en.en \
+--eval_script scripts/validate.sh \
+--model RNNSearch \
+--optim RMSprop \
+--batch_size 80 \
+--half_epoch \
+--info RMSprop-half_epoch \
+--cuda
+"""
 import argparse
 import time
 import os
 import sys
 import tempfile
 import subprocess
-
-import multiprocessing
 
 import numpy as np
 
@@ -75,8 +104,7 @@ def train(opt, model, epoch, train_iter, optimizer, device, src_vocab, trg_vocab
         optimizer.step()
         elapsed = time.time() - start_time
         R = map(lambda x: str(x.mean().item()), R)
-        print(epoch, batch_idx, len(train_iter), 100. * batch_idx / len(train_iter),
-              ' '.join(R), grad_norm.item(), opt.cur_lr, elapsed)
+        print(epoch, batch_idx, len(train_iter), 100. * batch_idx / len(train_iter), ' '.join(R), grad_norm.item(), opt.cur_lr, elapsed)
 
         # validation
         if batch_idx % opt.vfreq == 0:
